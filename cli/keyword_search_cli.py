@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
+from typing import Any
 
 
 def main() -> None:
@@ -14,7 +16,23 @@ def main() -> None:
 
     match args.command:
         case "search":
-            print(f"Searching for: {args.query}")
+            # Load the movies data
+            with open("data/movies.json") as f:
+                json_data = json.loads(f.read())
+
+            movies: list[dict[str, Any]] = json_data.get("movies", [])
+            results = []
+
+            for movie in movies:
+                if args.query in movie["title"]:
+                    results.append(movie)
+
+            for result in results:
+                print(f"Movie Title {result['title']}")
+
+            # Truncate the list to a maximum of 5 results, order by IDs ascending.
+            results = sorted(results, key=lambda x: x["id"])
+            results = results[:5]
         case _:
             parser.print_help()
 
