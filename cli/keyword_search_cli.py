@@ -208,10 +208,11 @@ def main() -> None:
             query_tokens = tokenize_text(args.query)
             results = []
 
-            for token in query_tokens:
-                doc_ids = inverted_index.get_documents(token)
-                for doc in (inverted_index.docmap[doc_id] for doc_id in doc_ids):
-                    results.append(doc)
+            query = args.query.lower()
+            for movie in movies:
+                title = movie["title"].lower()
+                if query in title:
+                    results.append(movie)
 
             for result in results:
                 print(f"Movie Title {result['title']}, Movie ID {result['id']}")
