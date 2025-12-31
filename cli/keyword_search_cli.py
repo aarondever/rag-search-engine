@@ -27,15 +27,31 @@ def main() -> None:
             results = []
 
             for movie in movies:
-                query = args.query.lower().translate(punctuation_map)
-                title = movie["title"].lower().translate(punctuation_map)
-                if query in title:
-                    results.append(movie)
+                # Tokenization query and movie title
+                query_tokens = [
+                    t
+                    for t in args.query.lower().translate(punctuation_map).split(" ")
+                    if t
+                ]
+                title_tokens = (
+                    t
+                    for t in movie["title"]
+                    .lower()
+                    .translate(punctuation_map)
+                    .split(" ")
+                    if t
+                )
+
+                # Matching query with title tokens
+                for title in title_tokens:
+                    for query in query_tokens:
+                        if query in title:
+                            results.append(movie)
+                            break
 
             # Truncate the list to a maximum of 5 results, order by IDs ascending.
             results = sorted(results, key=lambda x: x["id"])
             results = results[:5]
-
             for result in results:
                 print(f"Movie Title {result['title']}")
         case _:
