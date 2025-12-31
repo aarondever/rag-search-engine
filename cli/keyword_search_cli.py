@@ -15,31 +15,38 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    punctuation_map = str.maketrans({p: "" for p in string.punctuation})
-
     match args.command:
         case "search":
-            # Load the movies data
+            # Load movies data
             with open("data/movies.json") as f:
                 json_data = json.loads(f.read())
 
+            # Load stopwords
+            with open("data/stopwords.txt") as f:
+                stopword_data = f.read()
+
             movies: list[dict[str, Any]] = json_data.get("movies", [])
+            stopwords = set(stopword_data.splitlines())
+            punctuation_map = str.maketrans({p: "" for p in string.punctuation})
+
+            # Tokenization query
+            query_tokens = args.query.lower().split()
+            query_tokens = [
+                cleaned
+                for token in query_tokens
+                if token not in stopwords
+                if (cleaned := token.translate(punctuation_map))
+            ]
             results = []
 
             for movie in movies:
-                # Tokenization query and movie title
-                query_tokens = [
-                    t
-                    for t in args.query.lower().translate(punctuation_map).split(" ")
-                    if t
-                ]
+                # Tokenization movie title
+                title_tokens = movie["title"].lower().split()
                 title_tokens = (
-                    t
-                    for t in movie["title"]
-                    .lower()
-                    .translate(punctuation_map)
-                    .split(" ")
-                    if t
+                    cleaned
+                    for token in title_tokens
+                    if token not in stopwords
+                    if (cleaned := token.translate(punctuation_map))
                 )
 
                 # Matching query with title tokens
@@ -49,11 +56,12 @@ def main() -> None:
                             results.append(movie)
                             break
 
+            for result in results:
+                print(f"Movie Title {result['title']}")
+
             # Truncate the list to a maximum of 5 results, order by IDs ascending.
             results = sorted(results, key=lambda x: x["id"])
             results = results[:5]
-            for result in results:
-                print(f"Movie Title {result['title']}")
         case _:
             parser.print_help()
 
