@@ -5,6 +5,8 @@ import json
 import string
 from typing import Any
 
+from nltk.stem import PorterStemmer
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -28,13 +30,17 @@ def main() -> None:
             movies: list[dict[str, Any]] = json_data.get("movies", [])
             stopwords = set(stopword_data.splitlines())
             punctuation_map = str.maketrans({p: "" for p in string.punctuation})
+            stemmer = PorterStemmer()
 
             # Tokenization query
             query_tokens = args.query.lower().split()
             query_tokens = [
-                cleaned
+                # Stemming
+                stemmer.stem(cleaned, False)
                 for token in query_tokens
+                # Remove stopwords
                 if token not in stopwords
+                # Remove punctuation
                 if (cleaned := token.translate(punctuation_map))
             ]
             results = []
@@ -43,9 +49,12 @@ def main() -> None:
                 # Tokenization movie title
                 title_tokens = movie["title"].lower().split()
                 title_tokens = (
-                    cleaned
+                    # Stemming
+                    stemmer.stem(cleaned, False)
                     for token in title_tokens
+                    # Remove stopwords
                     if token not in stopwords
+                    # Remove punctuation
                     if (cleaned := token.translate(punctuation_map))
                 )
 
