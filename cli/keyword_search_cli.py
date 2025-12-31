@@ -9,12 +9,19 @@ from typing import Any
 
 from nltk.stem import PorterStemmer
 
+CACHE_DIR_PATH = "cache"
+INDEX_PICKLE_PATH = CACHE_DIR_PATH + "/index.pkl"
+DOCMAP_PICKLE_PATH = CACHE_DIR_PATH + "/docmap.pkl"
+DATA_DIR_PATH = "data"
+MOVIE_DATA_PATH = DATA_DIR_PATH + "/movies.json"
+STOPWORDS_DATA_PATH = DATA_DIR_PATH + "/stopwords.txt"
+
 # Load movies data
-with open("data/movies.json") as f:
+with open(MOVIE_DATA_PATH) as f:
     json_data = json.loads(f.read())
 
 # Load stopwords
-with open("data/stopwords.txt") as f:
+with open(STOPWORDS_DATA_PATH) as f:
     stopword_data = f.read()
 
 movies: list[dict[str, Any]] = json_data.get("movies", [])
@@ -52,13 +59,20 @@ class InvertedIndex:
             self.__add_document(doc_id, f"{movie['title']} {movie['description']}")
             self.docmap[doc_id] = movie
 
-    def save(self) -> None:
-        os.makedirs("cache", exist_ok=True)
+    def load(self) -> None:
+        with open(INDEX_PICKLE_PATH, "rb") as f:
+            self.index = pickle.load(f)
 
-        with open("cache/index.pkl", "wb") as f:
+        with open(DOCMAP_PICKLE_PATH, "rb") as f:
+            self.docmap = pickle.load(f)
+
+    def save(self) -> None:
+        os.makedirs(CACHE_DIR_PATH, exist_ok=True)
+
+        with open(INDEX_PICKLE_PATH, "wb") as f:
             pickle.dump(self.index, f)
 
-        with open("cache/docmap.pkl", "wb") as f:
+        with open(DOCMAP_PICKLE_PATH, "wb") as f:
             pickle.dump(self.docmap, f)
 
 
@@ -83,37 +97,37 @@ def main() -> None:
     subparsers.add_parser("build", help="Build the inverted index and save it to disk")
 
     args = parser.parse_args()
+    inverted_index = InvertedIndex()
 
     match args.command:
         case "search":
+            try:
+                inverted_index.load()
+            except FileNotFoundError as e:
+                print(e)
+                return
+
             # Tokenization query
             query_tokens = tokenize_text(args.query)
             results = []
 
-            for movie in movies:
-                # Tokenization movie title
-                title_tokens = tokenize_text(movie["title"])
+            for token in query_tokens:
+                if len(results) >= 5:
+                    break
 
-                # Matching query with title tokens
-                for title in title_tokens:
-                    for query in query_tokens:
-                        if query in title:
-                            results.append(movie)
-                            break
+                doc_ids = inverted_index.get_documents(token)
+                for doc in (inverted_index.docmap[doc_id] for doc_id in doc_ids):
+                    if len(results) >= 5:
+                        break
+
+                    results.append(doc)
 
             for result in results:
-                print(f"Movie Title {result['title']}")
+                print(f"Movie Title {result['title']}, Movie ID {result['id']}")
 
-            # Truncate the list to a maximum of 5 results, order by IDs ascending.
-            results = sorted(results, key=lambda x: x["id"])
-            results = results[:5]
         case "build":
-            inverted_index = InvertedIndex()
             inverted_index.build()
             inverted_index.save()
-
-            docs = inverted_index.get_documents("merida")
-            print(f"First document for token 'merida' = {docs[0]}")
         case _:
             parser.print_help()
 
