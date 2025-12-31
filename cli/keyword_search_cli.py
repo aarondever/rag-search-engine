@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import string
 from typing import Any
 
 
@@ -14,6 +15,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    punctuation_map = str.maketrans({p: "" for p in string.punctuation})
+
     match args.command:
         case "search":
             # Load the movies data
@@ -24,15 +27,17 @@ def main() -> None:
             results = []
 
             for movie in movies:
-                if args.query in movie["title"]:
+                query = args.query.lower().translate(punctuation_map)
+                title = movie["title"].lower().translate(punctuation_map)
+                if query in title:
                     results.append(movie)
-
-            for result in results:
-                print(f"Movie Title {result['title']}")
 
             # Truncate the list to a maximum of 5 results, order by IDs ascending.
             results = sorted(results, key=lambda x: x["id"])
             results = results[:5]
+
+            for result in results:
+                print(f"Movie Title {result['title']}")
         case _:
             parser.print_help()
 
