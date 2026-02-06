@@ -86,6 +86,17 @@ class InvertedIndex:
 
         return idf
 
+    def get_mb25_idf(self, term: str) -> float:
+        total_doc_count = len(self.docmap)
+        term_match_doc_count = len(self.get_documents(term))
+        idf = math.log(
+            (total_doc_count - term_match_doc_count + 0.5)
+            / (term_match_doc_count + 0.5)
+            + 1
+        )
+
+        return idf
+
     def build(self) -> None:
         for movie in movies:
             doc_id = movie["id"]
@@ -158,6 +169,14 @@ def main() -> None:
     tfidf_parser.add_argument("doc_id", type=int, help="Document ID")
     tfidf_parser.add_argument("term", type=str, help="Search term")
 
+    # BM25 IDF
+    bm25_idf_parser = subparsers.add_parser(
+        "bm25idf", help="Get BM25 IDF score for a given term"
+    )
+    bm25_idf_parser.add_argument(
+        "term", type=str, help="Term to get BM25 IDF score for"
+    )
+
     args = parser.parse_args()
     inverted_index = InvertedIndex()
 
@@ -219,6 +238,16 @@ def main() -> None:
             print(
                 f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}"
             )
+
+        case "bm25idf":
+            try:
+                inverted_index.load()
+            except FileNotFoundError as e:
+                print(e)
+                return
+
+            bm25idf = inverted_index.get_mb25_idf(args.term)
+            print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
 
         case _:
             parser.print_help()
