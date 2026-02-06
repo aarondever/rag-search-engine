@@ -18,7 +18,7 @@ TERM_FREQUENCIES_PICKLE_PATH = CACHE_DIR_PATH + "/term_frequencies.pkl"
 DATA_DIR_PATH = "data"
 MOVIE_DATA_PATH = DATA_DIR_PATH + "/movies.json"
 STOPWORDS_DATA_PATH = DATA_DIR_PATH + "/stopwords.txt"
-MAX_RESULT = 5
+BM25_K1 = 1.5
 
 # Load movies data
 with open(MOVIE_DATA_PATH) as f:
@@ -85,6 +85,12 @@ class InvertedIndex:
         idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
 
         return idf
+
+    def get_bm25_tf(self, doc_id: int, term: str, k1: float = BM25_K1) -> float:
+        tf = self.get_tf(doc_id, term)
+        bm25_tf = (tf * (k1 + 1)) / (tf + k1)
+
+        return bm25_tf
 
     def get_mb25_idf(self, term: str) -> float:
         total_doc_count = len(self.docmap)
@@ -169,6 +175,16 @@ def main() -> None:
     tfidf_parser.add_argument("doc_id", type=int, help="Document ID")
     tfidf_parser.add_argument("term", type=str, help="Search term")
 
+    # BM25 TF
+    bm25_tf_parser = subparsers.add_parser(
+        "bm25tf", help="Get BM25 TF score for a given document ID and term"
+    )
+    bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
+    bm25_tf_parser.add_argument(
+        "k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter"
+    )
+
     # BM25 IDF
     bm25_idf_parser = subparsers.add_parser(
         "bm25idf", help="Get BM25 IDF score for a given term"
@@ -180,14 +196,14 @@ def main() -> None:
     args = parser.parse_args()
     inverted_index = InvertedIndex()
 
+    try:
+        inverted_index.load()
+    except FileNotFoundError as e:
+        print(e)
+        return
+
     match args.command:
         case "search":
-            try:
-                inverted_index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
-
             # Tokenization query
             query_tokens = tokenize_text(args.query)
             results = []
@@ -205,32 +221,14 @@ def main() -> None:
             inverted_index.save()
 
         case "tf":
-            try:
-                inverted_index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
-
             tf = inverted_index.get_tf(args.doc_id, args.term)
             print(tf)
 
         case "idf":
-            try:
-                inverted_index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
-
             idf = inverted_index.get_idf(args.term)
             print("%.2f" % idf)
 
         case "tfidf":
-            try:
-                inverted_index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
-
             tf = inverted_index.get_tf(args.doc_id, args.term)
             idf = inverted_index.get_idf(args.term)
             tf_idf = tf * idf
@@ -239,13 +237,13 @@ def main() -> None:
                 f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}"
             )
 
-        case "bm25idf":
-            try:
-                inverted_index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
+        case "bm25tf":
+            bm25tf = inverted_index.get_bm25_tf(args.doc_id, args.term, args.k1)
+            print(
+                f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}"
+            )
 
+        case "bm25idf":
             bm25idf = inverted_index.get_mb25_idf(args.term)
             print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
 
