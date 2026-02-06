@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import math
 import os
 import pickle
 import string
@@ -135,6 +136,10 @@ def main() -> None:
     tf_parser.add_argument("doc_id", type=int, help="Document ID")
     tf_parser.add_argument("term", type=str, help="Search term")
 
+    # Inverse Document Frequency
+    idf_parser = subparsers.add_parser("idf", help="Show the frequencies of given term")
+    idf_parser.add_argument("term", type=str, help="Search term")
+
     args = parser.parse_args()
     inverted_index = InvertedIndex()
 
@@ -171,6 +176,18 @@ def main() -> None:
 
             freq = inverted_index.get_tf(args.doc_id, args.term)
             print(freq)
+
+        case "idf":
+            try:
+                inverted_index.load()
+            except FileNotFoundError as e:
+                print(e)
+                return
+
+            total_doc_count = len(inverted_index.docmap)
+            term_match_doc_count = len(inverted_index.get_documents(args.term))
+            idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+            print(round(idf, 2))
 
         case _:
             parser.print_help()
