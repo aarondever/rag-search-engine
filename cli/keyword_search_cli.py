@@ -11,7 +11,7 @@ from lib.keyword_serach import (
     tf_command,
     tfidf_command,
 )
-from lib.search_utils import BM25_K1
+from lib.search_utils import BM25_B, BM25_K1
 
 
 def main() -> None:
@@ -54,6 +54,9 @@ def main() -> None:
     bm25_tf_parser.add_argument(
         "k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter"
     )
+    bm25_tf_parser.add_argument(
+        "b", type=float, nargs="?", default=BM25_B, help="Tunable BM25 b parameter"
+    )
 
     # BM25 IDF
     bm25_idf_parser = subparsers.add_parser(
@@ -88,7 +91,7 @@ def main() -> None:
             )
 
         case "bm25tf":
-            bm25tf = mb25_tf_command(args.doc_id, args.term, args.k1)
+            bm25tf = mb25_tf_command(args.doc_id, args.term, args.k1, args.b)
             print(
                 f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}"
             )
