@@ -2,9 +2,11 @@
 
 import argparse
 
+from lib.search_utils import DEFAULT_SEARCH_LIMIT
 from lib.semantic_search import (
     embed_query_text,
     embed_text,
+    search,
     verify_embeddings,
     verify_model,
 )
@@ -28,6 +30,19 @@ def main():
     embed_query_parser = subparsers.add_parser("embedquery", help="Embed query")
     embed_query_parser.add_argument("query", type=str, help="Search query")
 
+    # Search
+    search_parser = subparsers.add_parser(
+        "search", help="Search movies using cosine similarity scoring"
+    )
+    search_parser.add_argument("query", type=str, help="Search query")
+    search_parser.add_argument(
+        "--limit",
+        type=int,
+        nargs="?",
+        default=DEFAULT_SEARCH_LIMIT,
+        help="Limit the number of query results",
+    )
+
     args = parser.parse_args()
 
     match args.command:
@@ -42,6 +57,9 @@ def main():
 
         case "embedquery":
             embed_query_text(args.query)
+
+        case "search":
+            search(args.query, args.limit)
 
         case _:
             parser.print_help()
