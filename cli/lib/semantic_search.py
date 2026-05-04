@@ -1,4 +1,5 @@
 import os
+import re
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -136,20 +137,39 @@ def chunk(text: str, chunk_size: int, overlap: int) -> None:
     words = text.strip().split()
     chunks, current, current_len = [], [], 0
 
-    for word in words:
-        # +1 for the space separator before this word
-        added_len = len(word) + (1 if current else 0)
-        if current and current_len + added_len > chunk_size:
+    for words in words:
+        if current and current_len + 1 > chunk_size:
             chunks.append(" ".join(current))
-            current = current[-overlap:] + [word] if overlap else [word]
-            current_len = len(" ".join(current))
+            current = current[-overlap:] + [words] if overlap else [words]
+            current_len = len(current)
         else:
-            current.append(word)
-            current_len += added_len
+            current.append(words)
+            current_len += 1
 
     if current:
         chunks.append(" ".join(current))
 
     print(f"Chunking {len(text)} characters")
+    for i in range(len(chunks)):
+        print(f"{i + 1}. {chunks[i]}")
+
+
+def semantic_chunk(text: str, chunk_size: int, overlap: int) -> None:
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    chunks, current, current_len = [], [], 0
+
+    for sentence in sentences:
+        if current and current_len + 1 > chunk_size:
+            chunks.append(" ".join(current))
+            current = current[-overlap:] + [sentence] if overlap else [sentence]
+            current_len = len(current)
+        else:
+            current.append(sentence)
+            current_len += 1
+
+    if current:
+        chunks.append(" ".join(current))
+
+    print(f"Semantically Chunking {len(text)} characters")
     for i in range(len(chunks)):
         print(f"{i + 1}. {chunks[i]}")
