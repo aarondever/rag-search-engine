@@ -4,11 +4,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 from sentence_transformers import SentenceTransformer
 
-from .search_utils import (
-    DEFAULT_SEARCH_LIMIT,
-    MOVIE_EMBEDDINGS_NPY_PATH,
-    load_movies,
-)
+from .search_utils import MOVIE_EMBEDDINGS_NPY_PATH, load_movies
 
 
 class SemanticSearch:
@@ -55,7 +51,7 @@ class SemanticSearch:
 
         return self.build_embeddings(documents)
 
-    def search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[tuple]:
+    def search(self, query: str, limit: int) -> list[tuple]:
         if self.embeddings is None or self.documents is None:
             raise ValueError(
                 "No embeddings loaded. Call `load_or_create_embeddings` first."
@@ -114,7 +110,7 @@ def embed_query_text(query: str) -> None:
     print(f"Shape: {embedding.shape}")
 
 
-def search(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> None:
+def search(query: str, limit: int) -> None:
     ss = SemanticSearch()
     documents = load_movies()
     ss.load_or_create_embedding(documents)
@@ -134,3 +130,23 @@ def cosine_similarity(vec1: ArrayLike, vec2: ArrayLike) -> float:
         return 0.0
 
     return dot_product / (norm1 * norm2)
+
+
+def chunk(text: str, chunk_size: int) -> None:
+    words = text.strip().split()
+    chunks, current, current_len = [], [], 0
+
+    for word in words:
+        if current and current_len + len(word) > chunk_size:
+            chunks.append(" ".join(current))
+            current, current_len = [word], len(word)
+        else:
+            current.append(word)
+            current_len += len(word)
+
+    if current:
+        chunks.append(" ".join(current))
+
+    print(f"Chunking {len(text)} characters")
+    for i in range(len(chunks)):
+        print(f"{i + 1}. {chunks[i]}")
