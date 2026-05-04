@@ -27,7 +27,7 @@ def main():
     subparsers.add_parser("verify_embeddings", help="Verify embeddings")
 
     # Embed query
-    embed_query_parser = subparsers.add_parser("embedquery", help="Embed query")
+    embed_query_parser = subparsers.add_parser("embed_query", help="Embed query")
     embed_query_parser.add_argument("query", type=str, help="Search query")
 
     # Search
@@ -55,7 +55,7 @@ def main():
         case "verify_embeddings":
             verify_embeddings()
 
-        case "embedquery":
+        case "embed_query":
             embed_query_text(args.query)
 
         case "search":

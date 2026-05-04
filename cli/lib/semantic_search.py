@@ -56,19 +56,21 @@ class SemanticSearch:
         return self.build_embeddings(documents)
 
     def search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[tuple]:
-        if self.embeddings is None:
+        if self.embeddings is None or self.documents is None:
             raise ValueError(
                 "No embeddings loaded. Call `load_or_create_embeddings` first."
             )
 
         embedding = self.generate_embedding(query)
         scores = []
+        # Calculate cosine similarity between the query embedding and each document embedding
         for i in range(len(self.embeddings)):
             scores.append(
                 (cosine_similarity(embedding, self.embeddings[i]), self.documents[i])
             )
 
         results = []
+        # Sort the list by similarity score in descending order
         for v in sorted(scores, key=lambda item: item[0], reverse=True):
             results.append(v)
             if len(results) >= limit:
@@ -119,8 +121,8 @@ def search(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> None:
 
     results = ss.search(query, limit)
     for i in range(len(results)):
-        print(f"{i + 1}. {results[i][0]['title']} (score: {results[i][0]})")
-        print(results[i][0]["description"], "\n")
+        print(f"{i + 1}. {results[i][1]['title']} (score: {results[i][0]})")
+        print(results[i][1]["description"], "\n")
 
 
 def cosine_similarity(vec1: ArrayLike, vec2: ArrayLike) -> float:
