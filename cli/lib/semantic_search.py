@@ -132,17 +132,20 @@ def cosine_similarity(vec1: ArrayLike, vec2: ArrayLike) -> float:
     return dot_product / (norm1 * norm2)
 
 
-def chunk(text: str, chunk_size: int) -> None:
+def chunk(text: str, chunk_size: int, overlap: int) -> None:
     words = text.strip().split()
     chunks, current, current_len = [], [], 0
 
     for word in words:
-        if current and current_len + len(word) > chunk_size:
+        # +1 for the space separator before this word
+        added_len = len(word) + (1 if current else 0)
+        if current and current_len + added_len > chunk_size:
             chunks.append(" ".join(current))
-            current, current_len = [word], len(word)
+            current = current[-overlap:] + [word] if overlap else [word]
+            current_len = len(" ".join(current))
         else:
             current.append(word)
-            current_len += len(word)
+            current_len += added_len
 
     if current:
         chunks.append(" ".join(current))

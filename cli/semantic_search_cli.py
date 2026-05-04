@@ -54,6 +54,13 @@ def main():
         default=DEFAULT_CHUNK_SIZE,
         help="Chunk size for the text",
     )
+    chunk_parser.add_argument(
+        "--overlap",
+        type=int,
+        nargs="?",
+        default=0,
+        help="Overlap between chunks",
+    )
 
     args = parser.parse_args()
 
@@ -74,7 +81,7 @@ def main():
             search(args.query, args.limit)
 
         case "chunk":
-            chunk(args.text, args.chunk_size)
+            chunk(args.text, args.chunk_size, args.overlap)
 
         case _:
             parser.print_help()
