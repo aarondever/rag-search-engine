@@ -1,3 +1,4 @@
+import json
 import os
 import re
 
@@ -5,12 +6,17 @@ import numpy as np
 from numpy.typing import ArrayLike
 from sentence_transformers import SentenceTransformer
 
-from .search_utils import MOVIE_EMBEDDINGS_NPY_PATH, load_movies
+from .search_utils import (
+    CHUNK_EMBEDDINGS_NPY_PATH,
+    CHUNK_METADATA_NPY_PATH,
+    MOVIE_EMBEDDINGS_NPY_PATH,
+    load_movies,
+)
 
 
 class SemanticSearch:
-    def __init__(self) -> None:
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
+    def __init__(self, model_name="all-MiniLM-L6-v2") -> None:
+        self.model = SentenceTransformer(model_name)
         self.embeddings = None
         self.documents = None
         self.document_map = {}
@@ -76,6 +82,67 @@ class SemanticSearch:
         return results
 
 
+class ChunkedSemanticSearch(SemanticSearch):
+    def __init__(self, model_name="all-MiniLM-L6-v2") -> None:
+        super().__init__(model_name)
+        self.chunk_embeddings = None
+        self.chunk_metadata = None
+
+    def build_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
+        self.documents = documents
+        all_chunks, metadata = [], []
+
+        for idx, doc in enumerate(self.documents):
+            self.document_map[doc["id"]] = doc
+
+            # If the description text is empty, skip it
+            if not doc["description"]:
+                continue
+
+            chunks = semantic_chunk(doc["description"], 4, 1)
+            all_chunks.extend(chunks)
+            for i in range(len(chunks)):
+                metadata.append(
+                    {
+                        "movie_idx": idx,
+                        "chunk_idx": i,
+                        "total_chunks": len(chunks),
+                    }
+                )
+
+        self.chunk_embeddings = self.model.encode(all_chunks, show_progress_bar=True)
+        self.chunk_metadata = metadata
+        with open(CHUNK_EMBEDDINGS_NPY_PATH, "wb") as f:
+            np.save(f, self.chunk_embeddings)
+
+        with open(CHUNK_METADATA_NPY_PATH, "w") as f:
+            json.dump(
+                {"chunks": self.chunk_metadata, "total_chunks": len(all_chunks)},
+                f,
+                indent=2,
+            )
+
+        return self.chunk_embeddings
+
+    def load_or_create_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
+        self.documents = documents
+        for doc in documents:
+            self.document_map[doc["id"]] = doc
+
+        if os.path.exists(CHUNK_EMBEDDINGS_NPY_PATH) and os.path.exists(
+            CHUNK_METADATA_NPY_PATH
+        ):
+            with open(CHUNK_EMBEDDINGS_NPY_PATH, "rb") as f:
+                self.chunk_embeddings = np.load(f)
+
+            with open(CHUNK_METADATA_NPY_PATH, "r") as f:
+                self.chunk_metadata = json.load(f)
+
+            return self.chunk_embeddings
+
+        return self.build_chunk_embeddings(documents)
+
+
 def verify_model() -> None:
     ss = SemanticSearch()
     print(f"Model loaded: {ss.model}")
@@ -100,6 +167,13 @@ def verify_embeddings() -> None:
     print(
         f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions"
     )
+
+
+def embed_chunks() -> None:
+    css = ChunkedSemanticSearch()
+    documents = load_movies()
+    chunk_embeddings = css.load_or_create_chunk_embeddings(documents)
+    print(f"Generated {len(chunk_embeddings)} chunked embeddings")
 
 
 def embed_query_text(query: str) -> None:
@@ -154,7 +228,7 @@ def chunk(text: str, chunk_size: int, overlap: int) -> None:
         print(f"{i + 1}. {chunks[i]}")
 
 
-def semantic_chunk(text: str, chunk_size: int, overlap: int) -> None:
+def semantic_chunk(text: str, chunk_size: int, overlap: int) -> list[str]:
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     chunks, current, current_len = [], [], 0
 
@@ -170,6 +244,4 @@ def semantic_chunk(text: str, chunk_size: int, overlap: int) -> None:
     if current:
         chunks.append(" ".join(current))
 
-    print(f"Semantically Chunking {len(text)} characters")
-    for i in range(len(chunks)):
-        print(f"{i + 1}. {chunks[i]}")
+    return chunks
