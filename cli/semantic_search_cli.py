@@ -9,6 +9,7 @@ from lib.semantic_search import (
     embed_query_text,
     embed_text,
     search,
+    search_chunked,
     semantic_chunk,
     verify_embeddings,
     verify_model,
@@ -65,16 +66,18 @@ def main():
     )
 
     # Semantic Chunk
-    semantic_chunk_parse = subparsers.add_parser("semantic_chunk", help="Chunking text")
-    semantic_chunk_parse.add_argument("text", type=str, help="Text for chunking")
-    semantic_chunk_parse.add_argument(
+    semantic_chunk_parser = subparsers.add_parser(
+        "semantic_chunk", help="Chunking text"
+    )
+    semantic_chunk_parser.add_argument("text", type=str, help="Text for chunking")
+    semantic_chunk_parser.add_argument(
         "--chunk-size",
         type=int,
         nargs="?",
         default=4,
         help="Chunk size for the text",
     )
-    semantic_chunk_parse.add_argument(
+    semantic_chunk_parser.add_argument(
         "--overlap",
         type=int,
         nargs="?",
@@ -84,6 +87,19 @@ def main():
 
     # Embed Chunk
     subparsers.add_parser("embed_chunks", help="Embed chunks")
+
+    # Search Chunked
+    search_chunked_parser = subparsers.add_parser(
+        "search_chunked", help="Search chunked embeddings"
+    )
+    search_chunked_parser.add_argument("query", type=str, help="Search query")
+    search_chunked_parser.add_argument(
+        "--limit",
+        type=int,
+        nargs="?",
+        default=DEFAULT_SEARCH_LIMIT,
+        help="Limit the number of query results",
+    )
 
     args = parser.parse_args()
 
@@ -111,6 +127,9 @@ def main():
 
         case "embed_chunks":
             embed_chunks()
+
+        case "search_chunked":
+            search_chunked(args.query, args.limit)
 
         case _:
             parser.print_help()
