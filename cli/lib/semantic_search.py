@@ -96,7 +96,7 @@ class ChunkedSemanticSearch(SemanticSearch):
 
             # If the description text is empty, skip it
             description = doc.get("description", "").strip()
-            if description:
+            if not description:
                 continue
 
             chunks = semantic_chunk(description, chunk_size=4, overlap=1)
@@ -285,10 +285,18 @@ def chunk(text: str, chunk_size: int, overlap: int) -> None:
 
 
 def semantic_chunk(text: str, chunk_size: int, overlap: int) -> list[str]:
-    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    text = text.strip()
+    if not text:
+        return []
+
+    sentences = re.split(r"(?<=[.!?])\s+", text)
     chunks, current, current_len = [], [], 0
 
     for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+
         if current and current_len + 1 > chunk_size:
             chunks.append(" ".join(current))
             current = current[-overlap:] + [sentence] if overlap else [sentence]
@@ -299,6 +307,10 @@ def semantic_chunk(text: str, chunk_size: int, overlap: int) -> list[str]:
 
     if current:
         chunks.append(" ".join(current))
+
+    # print(f"Semantically Chunking {len(text)} characters")
+    # for i in range(len(chunks)):
+    #     print(f"{i + 1}. {chunks[i]}")
 
     return chunks
 
