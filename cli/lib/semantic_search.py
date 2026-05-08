@@ -183,7 +183,7 @@ class ChunkedSemanticSearch(SemanticSearch):
         for movie_idx, score in sorted(
             movie_scores.items(), key=lambda item: item[1], reverse=True
         ):
-            doc = self.document_map[movie_idx]
+            doc = self.documents[movie_idx]
             results.append(
                 {
                     "id": doc["id"],
