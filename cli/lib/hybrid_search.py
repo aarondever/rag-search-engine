@@ -99,19 +99,46 @@ def weighted_search_command(query: str, alpha: float, limit: int = 5) -> list[di
 def rrf_search_command(
     query: str, k: int = 60, limit: int = 10, enhance: str | None = None
 ) -> list[dict]:
-    if enhance == "spell":
-        response = client.models.generate_content(
-            model="gemma-4-31b-it",
-            contents=f"""Fix any spelling errors in the user-provided movie search query below.
-            Correct only clear, high-confidence typos. Do not rewrite, add, remove, or reorder words.
-            Preserve punctuation and capitalization unless a change is required for a typo fix.
-            If there are no spelling errors, or if you're unsure, output the original query unchanged.
-            Output only the final query text, nothing else.
-            User query: "{query}"
-            """,
-        )
-        print(f"Enhanced query ({enhance}): '{query}' -> '{response.text}'\n")
-        query = response.text
+    match enhance:
+        case "spell":
+            response = client.models.generate_content(
+                model="gemma-4-31b-it",
+                contents=f"""Fix any spelling errors in the user-provided movie search query below.
+                Correct only clear, high-confidence typos. Do not rewrite, add, remove, or reorder words.
+                Preserve punctuation and capitalization unless a change is required for a typo fix.
+                If there are no spelling errors, or if you're unsure, output the original query unchanged.
+                Output only the final query text, nothing else.
+                User query: "{query}"
+                """,
+            )
+            print(f"Enhanced query ({enhance}): '{query}' -> '{response.text}'\n")
+            query = response.text
+
+        case "rewrite":
+            response = client.models.generate_content(
+                model="gemma-4-31b-it",
+                contents=f"""Rewrite the user-provided movie search query below to be more specific and searchable.
+
+                Consider:
+                - Common movie knowledge (famous actors, popular films)
+                - Genre conventions (horror = scary, animation = cartoon)
+                - Keep the rewritten query concise (under 10 words)
+                - It should be a Google-style search query, specific enough to yield relevant results
+                - Don't use boolean logic
+
+                Examples:
+                - "that bear movie where leo gets attacked" -> "The Revenant Leonardo DiCaprio bear attack"
+                - "movie about bear in london with marmalade" -> "Paddington London marmalade"
+                - "scary movie with bear from few years ago" -> "bear horror movie 2015-2020"
+
+                If you cannot improve the query, output the original unchanged.
+                Output only the rewritten query text, nothing else.
+
+                User query: "{query}"
+                """,
+            )
+            print(f"Enhanced query ({enhance}): '{query}' -> '{response.text}'\n")
+            query = response.text
 
     hs = HybridSearch(load_movies())
     return hs.rrf_search(query, k, limit)
