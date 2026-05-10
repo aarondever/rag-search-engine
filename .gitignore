@@ -15,3 +15,6 @@ wheels/
 # Project specific
 /data/
 /cache/
+
+# ENV files
+.env
