@@ -28,17 +28,23 @@ def main() -> None:
     )
 
     # RRF Search
-    rrf_wearch_parser = subparsers.add_parser(
+    rrf_parser = subparsers.add_parser(
         "rrf_search", help="Search movies using RRF hybrid search"
     )
-    rrf_wearch_parser.add_argument("query", type=str, help="Search query")
-    rrf_wearch_parser.add_argument("-k", type=int, help="k", default=60)
-    rrf_wearch_parser.add_argument(
+    rrf_parser.add_argument("query", type=str, help="Search query")
+    rrf_parser.add_argument("-k", type=int, help="k", default=60)
+    rrf_parser.add_argument(
         "--limit",
         type=int,
         nargs="?",
         default=5,
         help="Limit the number of query results",
+    )
+    rrf_parser.add_argument(
+        "--enhance",
+        type=str,
+        choices=["spell"],
+        help="Query enhancement method",
     )
 
     args = parser.parse_args()
@@ -58,7 +64,7 @@ def main() -> None:
                 print(f"{v['doc']['description'][:100]}...")
 
         case "rrf_search":
-            results = rrf_search_command(args.query, args.k, args.limit)
+            results = rrf_search_command(args.query, args.k, args.limit, args.enhance)
             for i, v in enumerate(results):
                 print(f"\n{i + 1}. {v['doc']['title']}")
                 print(f"(RRF Score: {v['rrf_score']:.4f})")
