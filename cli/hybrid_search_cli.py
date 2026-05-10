@@ -1,6 +1,6 @@
 import argparse
 
-from lib.hybrid_search import normalize, weighted_search_command
+from lib.hybrid_search import normalize, rrf_search_command, weighted_search_command
 
 
 def main() -> None:
@@ -27,6 +27,20 @@ def main() -> None:
         help="Limit the number of query results",
     )
 
+    # RRF Search
+    rrf_wearch_parser = subparsers.add_parser(
+        "rrf_search", help="Search movies using RRF hybrid search"
+    )
+    rrf_wearch_parser.add_argument("query", type=str, help="Search query")
+    rrf_wearch_parser.add_argument("-k", type=int, help="k", default=60)
+    rrf_wearch_parser.add_argument(
+        "--limit",
+        type=int,
+        nargs="?",
+        default=5,
+        help="Limit the number of query results",
+    )
+
     args = parser.parse_args()
 
     match args.command:
@@ -40,6 +54,14 @@ def main() -> None:
             for i, v in enumerate(results):
                 print(f"\n{i + 1}. {v['doc']['title']}")
                 print(f"(Hybrid Score: {v['hybrid_score']:.4f})")
+                print(f"BM25: {v['bm25']:.4f}, Semantic: {v['semantic']:.4f}")
+                print(f"{v['doc']['description'][:100]}...")
+
+        case "rrf_search":
+            results = rrf_search_command(args.query, args.k, args.limit)
+            for i, v in enumerate(results):
+                print(f"\n{i + 1}. {v['doc']['title']}")
+                print(f"(RRF Score: {v['rrf_score']:.4f})")
                 print(f"BM25: {v['bm25']:.4f}, Semantic: {v['semantic']:.4f}")
                 print(f"{v['doc']['description'][:100]}...")
 

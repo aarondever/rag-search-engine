@@ -188,7 +188,7 @@ class ChunkedSemanticSearch(SemanticSearch):
                 {
                     "id": doc["id"],
                     "title": doc["title"],
-                    "document": doc["description"][:100],
+                    "description": doc["description"][:100],
                     "score": round(score, SCORE_PRECISION),
                     "metadata": {},
                 }
@@ -323,4 +323,4 @@ def search_chunked(query: str, limit: int) -> None:
     results = css.search_chunks(query, limit)
     for i, v in enumerate(results):
         print(f"\n{i + 1}. {v['title']} (score: {v['score']:.4f})")
-        print(f"   {v['document']}...")
+        print(f"   {v['description']}...")
