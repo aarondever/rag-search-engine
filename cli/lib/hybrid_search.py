@@ -1,7 +1,9 @@
 import os
+from time import sleep
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 from .keyword_search import InvertedIndex
 from .search_utils import INDEX_PICKLE_PATH, load_movies
@@ -93,12 +95,23 @@ def rrf_score(rank: int, k: int = 60) -> float:
 
 def weighted_search_command(query: str, alpha: float, limit: int = 5) -> list[dict]:
     hs = HybridSearch(load_movies())
-    return hs.weighted_search(query, alpha, limit)
+    results = hs.weighted_search(query, alpha, limit)
+    for i, v in enumerate(results):
+        print(f"\n{i + 1}. {v['doc']['title']}")
+        print(f"(Hybrid Score: {v['hybrid_score']:.4f})")
+        print(f"BM25: {v['bm25']:.4f}, Semantic: {v['semantic']:.4f}")
+        print(f"{v['doc']['description'][:100]}...")
 
 
 def rrf_search_command(
-    query: str, k: int = 60, limit: int = 10, enhance: str | None = None
+    query: str,
+    k: int = 60,
+    limit: int = 10,
+    enhance: str | None = None,
+    rerank: str | None = None,
 ) -> list[dict]:
+    hs = HybridSearch(load_movies())
+
     match enhance:
         case "spell":
             response = client.models.generate_content(
@@ -160,5 +173,54 @@ def rrf_search_command(
             print(f"Enhanced query ({enhance}): '{query}' -> '{response.text}'\n")
             query = response.text
 
-    hs = HybridSearch(load_movies())
-    return hs.rrf_search(query, k, limit)
+    match rerank:
+        case "individual":
+            results = hs.rrf_search(query, k, 5 * limit)
+            for result in results:
+                response = client.models.generate_content(
+                    model="gemma-4-31b-it",
+                    contents=f"""Rate how well this movie matches the search query.
+
+                    Query: "{query}"
+                    Movie: {result["doc"].get("title", "")} - {result["doc"].get("description", "")[:100]}
+
+                    Consider:
+                    - Direct relevance to query
+                    - User intent (what they're looking for)
+                    - Content appropriateness
+
+                    Rate 0-10 (10 = perfect match).
+                    Output ONLY the number in your response, no other text or explanation.
+
+                    Score:""",
+                    config=types.GenerateContentConfig(
+                        safety_settings=[
+                            types.SafetySetting(
+                                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+                            ),
+                        ]
+                    ),
+                )
+                sleep(3)
+                result["rerank_score"] = float(response.text)
+
+            results = sorted(results, key=lambda item: item["rerank_score"], reverse=True)[:limit]  # fmt: skip
+            print("Re-ranking top 3 results using individual method...")
+            print(
+                "Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):"
+            )
+
+            for i, v in enumerate(results):
+                print(f"\n{i + 1}. {v['doc']['title']}")
+                print(f"(Re-rank Score: {v['rerank_score']:.4f})")
+                print(f"(RRF Score: {v['rrf_score']:.4f})")
+                print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
+                print(f"{v['doc']['description'][:100]}...")
+
+    results = hs.rrf_search(query, k, limit)
+    for i, v in enumerate(results):
+        print(f"\n{i + 1}. {v['doc']['title']}")
+        print(f"(RRF Score: {v['rrf_score']:.4f})")
+        print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
+        print(f"{v['doc']['description'][:100]}...")

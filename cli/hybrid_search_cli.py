@@ -46,6 +46,12 @@ def main() -> None:
         choices=["spell", "rewrite", "expand"],
         help="Query enhancement method",
     )
+    rrf_parser.add_argument(
+        "--rerank-method",
+        type=str,
+        choices=["individual"],
+        help="Rerank method",
+    )
 
     args = parser.parse_args()
 
@@ -56,20 +62,12 @@ def main() -> None:
                 print(f"* {score:.4f}")
 
         case "weighted_search":
-            results = weighted_search_command(args.query, args.alpha, args.limit)
-            for i, v in enumerate(results):
-                print(f"\n{i + 1}. {v['doc']['title']}")
-                print(f"(Hybrid Score: {v['hybrid_score']:.4f})")
-                print(f"BM25: {v['bm25']:.4f}, Semantic: {v['semantic']:.4f}")
-                print(f"{v['doc']['description'][:100]}...")
+            weighted_search_command(args.query, args.alpha, args.limit)
 
         case "rrf_search":
-            results = rrf_search_command(args.query, args.k, args.limit, args.enhance)
-            for i, v in enumerate(results):
-                print(f"\n{i + 1}. {v['doc']['title']}")
-                print(f"(RRF Score: {v['rrf_score']:.4f})")
-                print(f"BM25: {v['bm25']:.4f}, Semantic: {v['semantic']:.4f}")
-                print(f"{v['doc']['description'][:100]}...")
+            rrf_search_command(
+                args.query, args.k, args.limit, args.enhance, args.rerank_method
+            )
 
         case _:
             parser.print_help()
