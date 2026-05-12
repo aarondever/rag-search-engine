@@ -62,12 +62,25 @@ def main() -> None:
                 print(f"* {score:.4f}")
 
         case "weighted_search":
-            weighted_search_command(args.query, args.alpha, args.limit)
+            results = weighted_search_command(args.query, args.alpha, args.limit)
+            for i, v in enumerate(results):
+                print(f"\n{i + 1}. {v['doc']['title']}")
+                print(f"(Hybrid Score: {v['hybrid_score']:.4f})")
+                print(f"BM25: {v['bm25']:.4f}, Semantic: {v['semantic']:.4f}")
+                print(f"{v['doc']['description'][:100]}...")
 
         case "rrf_search":
-            rrf_search_command(
+            results = rrf_search_command(
                 args.query, args.k, args.limit, args.enhance, args.rerank_method
             )
+            for i, v in enumerate(results):
+                print(f"\n{i + 1}. {v['doc']['title']}")
+                print(f"Rerank Score: {v.get('rerank_score', 0):.4f}")
+                print(f"Batch Rerank Score: {v.get('batch_rerank_score', 0):.4f}")
+                print(f"Cross Encoder Score: {v.get('cross_encoder_score', 0):.4f}")
+                print(f"RRF Score: {v['rrf_score']:.4f}")
+                print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
+                print(f"{v['doc']['description'][:100]}...")
 
         case _:
             parser.print_help()

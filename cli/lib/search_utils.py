@@ -11,6 +11,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 MOVIE_DATA_PATH = os.path.join(DATA_DIR, "movies.json")
 STOPWORDS_DATA_PATH = os.path.join(DATA_DIR, "stopwords.txt")
+GOLDEN_DATASET_PATH = os.path.join(DATA_DIR, "golden_dataset.json")
 
 CACHE_DIR = os.path.join(PROJECT_ROOT, "cache")
 INDEX_PICKLE_PATH = os.path.join(CACHE_DIR, "index.pkl")
@@ -34,3 +35,9 @@ def load_movies() -> list[dict[str, Any]]:
 def load_stopwords() -> list[str]:
     with open(STOPWORDS_DATA_PATH, "r") as f:
         return f.read().splitlines()
+
+
+def load_golden_dataset() -> list[dict[str, Any]]:
+    with open(GOLDEN_DATASET_PATH, "r") as f:
+        data = json.load(f)
+    return data["test_cases"]

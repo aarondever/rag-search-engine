@@ -97,12 +97,7 @@ def rrf_score(rank: int, k: int = 60) -> float:
 
 def weighted_search_command(query: str, alpha: float, limit: int = 5) -> list[dict]:
     hs = HybridSearch(load_movies())
-    results = hs.weighted_search(query, alpha, limit)
-    for i, v in enumerate(results):
-        print(f"\n{i + 1}. {v['doc']['title']}")
-        print(f"(Hybrid Score: {v['hybrid_score']:.4f})")
-        print(f"BM25: {v['bm25']:.4f}, Semantic: {v['semantic']:.4f}")
-        print(f"{v['doc']['description'][:100]}...")
+    return hs.weighted_search(query, alpha, limit)
 
 
 def rrf_search_command(
@@ -209,10 +204,6 @@ def rrf_search_command(
                 result["rerank_score"] = float(response.text)
 
             results = sorted(results, key=lambda item: item["rerank_score"], reverse=True)[:limit]  # fmt: skip
-            print("Re-ranking top 3 results using individual method...")
-            print(
-                "Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):"
-            )
 
         case "batch":
             doc_list_str = "\n".join(
@@ -249,10 +240,6 @@ def rrf_search_command(
                 results[i]["batch_rerank_score"] = rank
 
             results = sorted(results, key=lambda item: item["batch_rerank_score"], reverse=True)[:limit]  # fmt: skip
-            print("Re-ranking top 3 results using batch method...")
-            print(
-                "Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):"
-            )
 
         case "cross_encoder":
             pairs = [
@@ -267,16 +254,5 @@ def rrf_search_command(
                 results[i]["cross_encoder_score"] = rank
 
             results = sorted(results, key=lambda item: item["cross_encoder_score"], reverse=True)[:limit]  # fmt: skip
-            print("Re-ranking top 25 results using cross_encoder method...")
-            print(
-                "Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):"
-            )
 
-    for i, v in enumerate(results):
-        print(f"\n{i + 1}. {v['doc']['title']}")
-        print(f"Rerank Score: {v.get('rerank_score', 0):.4f}")
-        print(f"Batch Rerank Score: {v.get('batch_rerank_score', 0):.4f}")
-        print(f"Cross Encoder Score: {v.get('cross_encoder_score', 0):.4f}")
-        print(f"RRF Score: {v['rrf_score']:.4f}")
-        print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
-        print(f"{v['doc']['description'][:100]}...")
+    return results
