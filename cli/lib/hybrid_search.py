@@ -5,6 +5,7 @@ from time import sleep
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from sentence_transformers import CrossEncoder
 
 from .keyword_search import InvertedIndex
 from .search_utils import INDEX_PICKLE_PATH, load_movies
@@ -213,13 +214,6 @@ def rrf_search_command(
                 "Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):"
             )
 
-            for i, v in enumerate(results):
-                print(f"\n{i + 1}. {v['doc']['title']}")
-                print(f"(Re-rank Score: {v['rerank_score']:.4f})")
-                print(f"(RRF Score: {v['rrf_score']:.4f})")
-                print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
-                print(f"{v['doc']['description'][:100]}...")
-
         case "batch":
             doc_list_str = "\n".join(
                 f"{i + 1}. [ID: {v['doc']['id']}] {v['doc'].get('title', '')} - {v['doc'].get('description', '')[:150]}"
@@ -251,22 +245,38 @@ def rrf_search_command(
             )
 
             rankings = json.loads(response.text)
-            rank_position = {doc_id: i for i, doc_id in enumerate(rankings)}
-            results = sorted(results, key=lambda item: rank_position.get(item["doc"]["id"], len(rankings)))[:limit]  # fmt: skip
+            for i, rank in enumerate(rankings):
+                results[i]["batch_rerank_score"] = rank
+
+            results = sorted(results, key=lambda item: item["batch_rerank_score"], reverse=True)[:limit]  # fmt: skip
             print("Re-ranking top 3 results using batch method...")
             print(
                 "Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):"
             )
 
-            for i, v in enumerate(results):
-                print(f"\n{i + 1}. {v['doc']['title']}")
-                print(f"(Re-rank Score: {v['rerank_score']:.4f})")
-                print(f"(RRF Score: {v['rrf_score']:.4f})")
-                print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
-                print(f"{v['doc']['description'][:100]}...")
+        case "cross_encoder":
+            pairs = [
+                (query, f"{doc.get('title', '')} - {doc.get('description', '')}")
+                for doc in [v["doc"] for v in results]
+            ]
+            cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+            # `predict` returns a list of numbers, one for each pair
+            scores = cross_encoder.predict(pairs)
+
+            for i, rank in enumerate(scores):
+                results[i]["cross_encoder_score"] = rank
+
+            results = sorted(results, key=lambda item: item["cross_encoder_score"], reverse=True)[:limit]  # fmt: skip
+            print("Re-ranking top 25 results using cross_encoder method...")
+            print(
+                "Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):"
+            )
 
     for i, v in enumerate(results):
         print(f"\n{i + 1}. {v['doc']['title']}")
-        print(f"(RRF Score: {v['rrf_score']:.4f})")
+        print(f"Rerank Score: {v.get('rerank_score', 0):.4f}")
+        print(f"Batch Rerank Score: {v.get('batch_rerank_score', 0):.4f}")
+        print(f"Cross Encoder Score: {v.get('cross_encoder_score', 0):.4f}")
+        print(f"RRF Score: {v['rrf_score']:.4f}")
         print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
         print(f"{v['doc']['description'][:100]}...")
