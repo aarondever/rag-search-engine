@@ -23,9 +23,11 @@ def main():
         relevant_retrieved = len(retrived_set & relevant_set)
 
         precision = relevant_retrieved / len(retrived_set) if retrived_set else 0.0
+        recall = relevant_retrieved / len(relevant_set) if relevant_set else 0.0
 
         print(f"Query: {test_case['query']}")
         print(f"Precision@{limit}: {precision:.4f}")
+        print(f"Recall@{limit}: {recall:.4f}")
         print(f"Retrieved: {retrived_set}")
         print(f"Relevant: {relevant_set}")
 
