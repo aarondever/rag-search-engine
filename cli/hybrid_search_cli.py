@@ -13,7 +13,7 @@ def main() -> None:
 
     # Weighted Search
     weighted_search_parser = subparsers.add_parser(
-        "weighted_search", help="Search movies using weighted hybrid search"
+        "weighted-search", help="Search movies using weighted hybrid search"
     )
     weighted_search_parser.add_argument("query", type=str, help="Search query")
     weighted_search_parser.add_argument(
@@ -29,7 +29,7 @@ def main() -> None:
 
     # RRF Search
     rrf_parser = subparsers.add_parser(
-        "rrf_search", help="Search movies using RRF hybrid search"
+        "rrf-search", help="Search movies using RRF hybrid search"
     )
     rrf_parser.add_argument("query", type=str, help="Search query")
     rrf_parser.add_argument("-k", type=int, help="k", default=60)
@@ -61,7 +61,7 @@ def main() -> None:
             for score in scores:
                 print(f"* {score:.4f}")
 
-        case "weighted_search":
+        case "weighted-search":
             results = weighted_search_command(args.query, args.alpha, args.limit)
             for i, v in enumerate(results):
                 print(f"\n{i + 1}. {v['doc']['title']}")
@@ -69,7 +69,7 @@ def main() -> None:
                 print(f"BM25: {v['bm25']:.4f}, Semantic: {v['semantic']:.4f}")
                 print(f"{v['doc']['description'][:100]}...")
 
-        case "rrf_search":
+        case "rrf-search":
             results = rrf_search_command(
                 args.query, args.k, args.limit, args.enhance, args.rerank_method
             )

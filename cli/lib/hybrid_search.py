@@ -109,6 +109,8 @@ def rrf_search_command(
 ) -> list[dict]:
     hs = HybridSearch(load_movies())
 
+    print(f"[search] Original query: '{query}'")
+
     match enhance:
         case "spell":
             response = client.models.generate_content(
@@ -171,6 +173,7 @@ def rrf_search_command(
             query = response.text
 
     results = hs.rrf_search(query, k, 5 * limit if rerank is not None else limit)
+    print(f"[search] RRF results ({len(results)}): {[r['doc']['title'] for r in results]}\n")
 
     match rerank:
         case "individual":
@@ -255,4 +258,5 @@ def rrf_search_command(
 
             results = sorted(results, key=lambda item: item["cross_encoder_score"], reverse=True)[:limit]  # fmt: skip
 
+    print(f"[search] Final results ({len(results)}): {[r['doc']['title'] for r in results]}\n")
     return results
