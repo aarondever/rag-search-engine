@@ -1,3 +1,4 @@
+import json
 import os
 from time import sleep
 
@@ -173,16 +174,17 @@ def rrf_search_command(
             print(f"Enhanced query ({enhance}): '{query}' -> '{response.text}'\n")
             query = response.text
 
+    results = hs.rrf_search(query, k, 5 * limit if rerank is not None else limit)
+
     match rerank:
         case "individual":
-            results = hs.rrf_search(query, k, 5 * limit)
             for result in results:
                 response = client.models.generate_content(
                     model="gemma-4-31b-it",
                     contents=f"""Rate how well this movie matches the search query.
 
                     Query: "{query}"
-                    Movie: {result["doc"].get("title", "")} - {result["doc"].get("description", "")[:100]}
+                    Movie: {result["doc"].get("title", "")} - {result["doc"].get("description", "")[:150]}
 
                     Consider:
                     - Direct relevance to query
@@ -218,7 +220,51 @@ def rrf_search_command(
                 print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
                 print(f"{v['doc']['description'][:100]}...")
 
-    results = hs.rrf_search(query, k, limit)
+        case "batch":
+            doc_list_str = "\n".join(
+                f"{i + 1}. [ID: {v['doc']['id']}] {v['doc'].get('title', '')} - {v['doc'].get('description', '')[:150]}"
+                for i, v in enumerate(results)
+            )
+            response = client.models.generate_content(
+                model="gemma-4-31b-it",
+                contents=f"""Rank the movies listed below by relevance to the following search query.
+
+                    Query: "{query}"
+
+                    Movies:
+                    {doc_list_str}
+
+                    Return ONLY the movie IDs in order of relevance (best match first). Return a valid JSON list, nothing else.
+
+                    For example:
+                    [75, 12, 34, 2, 1]
+
+                    Ranking:""",
+                config=types.GenerateContentConfig(
+                    safety_settings=[
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+                        ),
+                    ]
+                ),
+            )
+
+            rankings = json.loads(response.text)
+            rank_position = {doc_id: i for i, doc_id in enumerate(rankings)}
+            results = sorted(results, key=lambda item: rank_position.get(item["doc"]["id"], len(rankings)))[:limit]  # fmt: skip
+            print("Re-ranking top 3 results using batch method...")
+            print(
+                "Reciprocal Rank Fusion Results for 'family movie about bears in the woods' (k=60):"
+            )
+
+            for i, v in enumerate(results):
+                print(f"\n{i + 1}. {v['doc']['title']}")
+                print(f"(Re-rank Score: {v['rerank_score']:.4f})")
+                print(f"(RRF Score: {v['rrf_score']:.4f})")
+                print(f"BM25 Rank: {v['bm25']:.4f}, Semantic Rank: {v['semantic']:.4f}")
+                print(f"{v['doc']['description'][:100]}...")
+
     for i, v in enumerate(results):
         print(f"\n{i + 1}. {v['doc']['title']}")
         print(f"(RRF Score: {v['rrf_score']:.4f})")
