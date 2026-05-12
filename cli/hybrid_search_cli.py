@@ -52,6 +52,9 @@ def main() -> None:
         choices=["individual", "batch", "cross_encoder"],
         help="Rerank method",
     )
+    rrf_parser.add_argument(
+        "--evaluate", type=bool, default=False, help="Whether to evaluate the results"
+    )
 
     args = parser.parse_args()
 
@@ -71,7 +74,12 @@ def main() -> None:
 
         case "rrf-search":
             results = rrf_search_command(
-                args.query, args.k, args.limit, args.enhance, args.rerank_method
+                args.query,
+                args.k,
+                args.limit,
+                args.enhance,
+                args.rerank_method,
+                args.evaluate,
             )
             for i, v in enumerate(results):
                 print(f"\n{i + 1}. {v['doc']['title']}")

@@ -4,7 +4,6 @@ from time import sleep
 
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
 from sentence_transformers import CrossEncoder
 
 from .keyword_search import InvertedIndex
@@ -106,6 +105,7 @@ def rrf_search_command(
     limit: int = 10,
     enhance: str | None = None,
     rerank: str | None = None,
+    evaluate: bool = False,
 ) -> list[dict]:
     hs = HybridSearch(load_movies())
 
@@ -173,7 +173,40 @@ def rrf_search_command(
             query = response.text
 
     results = hs.rrf_search(query, k, 5 * limit if rerank is not None else limit)
-    print(f"[search] RRF results ({len(results)}): {[r['doc']['title'] for r in results]}\n")
+    print(
+        f"[search] RRF results ({len(results)}): {[r['doc']['title'] for r in results]}\n"
+    )
+
+    if evaluate:
+        response = client.models.generate_content(
+            model="gemma-4-31b-it",
+            contents=f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+            Query: "{query}"
+
+            Results:
+            {
+                chr(10).join(
+                    f"{i + 1}. {v['doc'].get('title', '')} - {v['doc'].get('description', '')[:150]}"
+                    for i, v in enumerate(results)
+                )
+            }
+
+            Scale:
+            - 3: Highly relevant
+            - 2: Relevant
+            - 1: Marginally relevant
+            - 0: Not relevant
+
+            Do NOT give any numbers other than 0, 1, 2, or 3.
+
+            Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+            [2, 0, 3, 2, 0, 1]""",
+        )
+        scores = json.loads(response.text)
+        for i, score in enumerate(scores):
+            print(f"{i + 1}. {results[i]['doc']['title']}: {score}/3")
 
     match rerank:
         case "individual":
@@ -194,14 +227,6 @@ def rrf_search_command(
                     Output ONLY the number in your response, no other text or explanation.
 
                     Score:""",
-                    config=types.GenerateContentConfig(
-                        safety_settings=[
-                            types.SafetySetting(
-                                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-                            ),
-                        ]
-                    ),
                 )
                 sleep(3)
                 result["rerank_score"] = float(response.text)
@@ -209,10 +234,6 @@ def rrf_search_command(
             results = sorted(results, key=lambda item: item["rerank_score"], reverse=True)[:limit]  # fmt: skip
 
         case "batch":
-            doc_list_str = "\n".join(
-                f"{i + 1}. [ID: {v['doc']['id']}] {v['doc'].get('title', '')} - {v['doc'].get('description', '')[:150]}"
-                for i, v in enumerate(results)
-            )
             response = client.models.generate_content(
                 model="gemma-4-31b-it",
                 contents=f"""Rank the movies listed below by relevance to the following search query.
@@ -220,7 +241,12 @@ def rrf_search_command(
                     Query: "{query}"
 
                     Movies:
-                    {doc_list_str}
+                    {
+                    chr(10).join(
+                        f"{i + 1}. [ID: {v['doc']['id']}] {v['doc'].get('title', '')} - {v['doc'].get('description', '')[:150]}"
+                        for i, v in enumerate(results)
+                    )
+                }
 
                     Return ONLY the movie IDs in order of relevance (best match first). Return a valid JSON list, nothing else.
 
@@ -228,21 +254,16 @@ def rrf_search_command(
                     [75, 12, 34, 2, 1]
 
                     Ranking:""",
-                config=types.GenerateContentConfig(
-                    safety_settings=[
-                        types.SafetySetting(
-                            category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                            threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-                        ),
-                    ]
-                ),
             )
 
             rankings = json.loads(response.text)
-            for i, rank in enumerate(rankings):
-                results[i]["batch_rerank_score"] = rank
+            rank_position = {movie_id: i for i, movie_id in enumerate(rankings)}
+            for result in results:
+                result["batch_rerank_score"] = rank_position.get(
+                    result["doc"]["id"], len(rankings)
+                )
 
-            results = sorted(results, key=lambda item: item["batch_rerank_score"], reverse=True)[:limit]  # fmt: skip
+            results = sorted(results, key=lambda item: item["batch_rerank_score"])[:limit]  # fmt: skip
 
         case "cross_encoder":
             pairs = [
@@ -258,5 +279,7 @@ def rrf_search_command(
 
             results = sorted(results, key=lambda item: item["cross_encoder_score"], reverse=True)[:limit]  # fmt: skip
 
-    print(f"[search] Final results ({len(results)}): {[r['doc']['title'] for r in results]}\n")
+    print(
+        f"[search] Final results ({len(results)}): {[r['doc']['title'] for r in results]}\n"
+    )
     return results
