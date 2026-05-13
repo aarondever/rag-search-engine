@@ -59,6 +59,21 @@ def main():
         help="Limit the number of query results to include in the answer",
     )
 
+    # Question
+    question_parser = subparsers.add_parser(
+        "question", help="Answer a user question based on search results"
+    )
+    question_parser.add_argument(
+        "query", type=str, help="Search query for question answering"
+    )
+    question_parser.add_argument(
+        "--limit",
+        type=int,
+        nargs="?",
+        default=5,
+        help="Limit the number of query results to include in the answer",
+    )
+
     args = parser.parse_args()
 
     match args.command:
@@ -124,6 +139,27 @@ def main():
                 Answer:"""
             )
             print(f"LLM Answer:\n{content}")
+
+        case "question":
+            query = args.query
+            docs = retrieve_docs(args)
+            content = generate_content(
+                f"""Answer the user's question based on the provided movies that are available on Hoopla, a streaming service.
+
+                Question: {query}
+
+                Documents:
+                {docs}
+
+                Instructions:
+                - Answer questions directly and concisely
+                - Be casual and conversational
+                - Don't be cringe or hype-y
+                - Talk like a normal person would in a chat conversation
+
+                Answer:"""
+            )
+            print(f"Answer:\n{content}")
 
         case _:
             parser.print_help()
