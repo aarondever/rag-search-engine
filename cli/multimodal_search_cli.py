@@ -1,6 +1,6 @@
 import argparse
 
-from lib.multimodal_search import verify_image_embeddings
+from lib.multimodal_search import search_with_image, verify_image_embeddings
 
 
 def main():
@@ -15,11 +15,27 @@ def main():
         "--image", type=str, help="Path to the image file to verify"
     )
 
+    # search with image
+    search_parser = subparsers.add_parser(
+        "search", help="Search for movies using an image"
+    )
+    search_parser.add_argument(
+        "--image", type=str, help="Path to the image file to search with"
+    )
+
     args = parser.parse_args()
 
     match args.command:
         case "verify":
             verify_image_embeddings(args.image)
+
+        case "search":
+            results = search_with_image(args.image)
+            for i, result in enumerate(results):
+                print(
+                    f"{i + 1}. {result['title']} (Similarity: {result['similarity']:.4f})"
+                )
+                print(result["description"], "\n")
 
         case _:
             parser.print_help()
